@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Assignment 3 - Pastel Multiview</title>
+  <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Quicksand', sans-serif;
+      background-color: #f9eef1;
+      /* slightly more saturated */
+      color: #4f3f50;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+      margin: 0;
+    }
+
+    h1 {
+      font-weight: 700;
+      color: #7a5f7c;
+      margin-bottom: 30px;
+    }
+
+    #vis-container {
+      background: #ffffff;
+      padding: 40px;
+      border-radius: 20px;
+      border: 2px solid #f8cfd8;
+      box-shadow: 0 10px 40px rgba(220, 140, 170, 0.25);
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Sales Dashboard</h1>
+
+  <div id="vis-container">
+    <div id="vis"></div>
+  </div>
+
+  <script>
+    const spec = {
+      "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+
+      "data": {
+        "url": "https://raw.githubusercontent.com/akshathprasad71012/embedded/refs/heads/main/HW_III.csv",
+        "format": { "type": "csv" }
+      },
+
+      "config": {
+        "font": "'Quicksand', sans-serif",
+        "title": { "fontSize": 16, "fontWeight": 600, "color": "#7a5f7c", "anchor": "start", "offset": 15 },
+        "axis": {
+          "labelColor": "#7c8591",
+          "titleColor": "#7a5f7c",
+          "titleFontWeight": 600,
+          "gridColor": "#f6dce3",
+          "domainColor": "transparent",
+          "tickColor": "transparent"
+        },
+        "view": { "stroke": "transparent" },
+        "legend": { "titleColor": "#7a5f7c", "labelColor": "#6b7280" }
+      },
+
+      "spacing": 40,
+      "vconcat": [
+        {
+          "spacing": 40,
+          "hconcat": [
+            {
+              "title": "Total Revenue by Rep",
+              "mark": { "type": "arc", "innerRadius": 55, "padAngle": 0.05, "cornerRadius": 6 },
+              "encoding": {
+                "theta": { "field": "Total", "type": "quantitative", "aggregate": "sum" },
+                "color": {
+                  "field": "Rep",
+                  "type": "nominal",
+                  "scale": { "scheme": "set2" }
+                },
+                "tooltip": [
+                  { "field": "Rep", "type": "nominal" },
+                  { "field": "Total", "type": "quantitative", "aggregate": "sum", "format": "$,.2f" }
+                ]
+              },
+              "width": 500, "height": 280
+            },
+            {
+              "title": "Revenue Flow Over Time",
+              "mark": { "type": "area", "line": { "color": "white", "strokeWidth": 1 }, "interpolate": "monotone" },
+              "encoding": {
+                "x": { "field": "OrderDate", "timeUnit": "yearmonth", "type": "temporal", "axis": { "format": "%b %Y", "title": "Date" } },
+                "y": { "aggregate": "sum", "field": "Total", "type": "quantitative", "stack": "center", "axis": null },
+                "color": {
+                  "field": "Item",
+                  "type": "nominal",
+                  "scale": { "scheme": "set2" }
+                },
+                "opacity": { "value": 0.9 }
+              },
+              "width": 400, "height": 280
+            }
+          ]
+        },
+        {
+          "title": "Unit Distribution per Item Category",
+          "facet": {
+            "field": "Item",
+            "type": "nominal",
+            "columns": 3,
+            "header": { "labelFontSize": 14, "labelFontWeight": 600, "title": null, "labelColor": "#7a5f7c" }
+          },
+          "spec": {
+            "layer": [
+              {
+                "mark": { "type": "bar", "cornerRadiusEnd": 4, "color": "#a8ddb5" },
+                "encoding": {
+                  "x": { "field": "Units", "bin": true, "type": "quantitative", "axis": { "title": "Units Sold" } },
+                  "y": { "aggregate": "count", "type": "quantitative", "axis": { "title": "Frequency" } }
+                }
+              },
+              {
+                "mark": { "type": "rule", "color": "#f28b82", "size": 3, "strokeDash": [4, 4] },
+                "encoding": {
+                  "x": { "aggregate": "mean", "field": "Units", "type": "quantitative" }
+                }
+              }
+            ],
+            "width": 200, "height": 150
+          }
+        },
+        {
+          "spacing": 80,
+          "hconcat": [
+            {
+              "title": "Top Performers Over Time",
+              "width": 500,
+              "height": 200,
+
+              "transform": [
+                {
+                  "timeUnit": "yearmonth",
+                  "field": "OrderDate",
+                  "as": "Month"
+                },
+                {
+                  "aggregate": [
+                    { "op": "sum", "field": "Total", "as": "TotalSales" }
+                  ],
+                  "groupby": ["Month", "Rep"]
+                },
+                {
+                  "window": [
+                    { "op": "rank", "as": "Rank" }
+                  ],
+                  "sort": [
+                    { "field": "TotalSales", "order": "descending" }
+                  ],
+                  "groupby": ["Month"]
+                }
+              ],
+
+              "layer": [
+                {
+                  "mark": {
+                    "type": "line",
+                    "point": true
+                  },
+                  "encoding": {
+                    "x": { "field": "Month", "type": "temporal" },
+                    "y": {
+                      "field": "Rank",
+                      "type": "ordinal",
+                      "sort": "ascending",
+                      "title": "Rank (1 = Top)"
+                    },
+                    "color": {
+                      "field": "Rep",
+                      "type": "nominal",
+                      "scale": { "scheme": "set2" }
+                    }
+                  }
+                },
+
+                {
+                  "mark": {
+                    "type": "rule",
+                    "color": "gray"
+                  },
+                  "encoding": {
+                    "x": { "field": "Month", "type": "temporal" },
+                    "opacity": {
+                      "condition": { "param": "hover", "empty": false, "value": 0.8 },
+                      "value": 0
+                    }
+                  }
+                },
+
+                {
+                  "mark": {
+                    "type": "point",
+                    "opacity": 0
+                  },
+                  "params": [
+                    {
+                      "name": "hover",
+                      "select": {
+                        "type": "point",
+                        "fields": ["Month"],
+                        "nearest": true,
+                        "on": "mouseover",
+                        "clear": "mouseout"
+                      }
+                    }
+                  ],
+                  "encoding": {
+                    "x": { "field": "Month", "type": "temporal" },
+                    "y": { "field": "Rank", "type": "ordinal" },
+
+                    "tooltip": [
+                      { "field": "Rep", "type": "nominal" },
+                      { "field": "Month", "type": "temporal", "title": "Month" },
+                      { "field": "TotalSales", "type": "quantitative", "title": "Sales", "format": "$,.2f" },
+                      { "field": "Rank", "type": "ordinal" }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "title": "Revenue Flow: Region - Item (Click on Regions)",
+              "transform": [
+                {
+                  "aggregate": [
+                    { "op": "sum", "field": "Total", "as": "Revenue" }
+                  ],
+                  "groupby": ["Region", "Item"]
+                }
+              ],
+              "params": [
+                {
+                  "name": "regionClick",
+                  "select": {
+                    "type": "point",
+                    "fields": ["Region"],
+                    "on": "click",
+                    "clear": "dblclick"
+                  }
+                }
+              ],
+              "mark": "bar",
+              "encoding": {
+                "y": {
+                  "aggregate": "sum",
+                  "field": "Revenue",
+                  "title": "Revenue"
+                },
+                "x": {
+                  "field": "Region",
+                  "type": "nominal",
+                  "title": "Region"
+                },
+                "color": {
+                  "field": "Item",
+                  "type": "nominal",
+                  "scale": { "scheme": "set2" }
+                },
+                "column": {
+                  "field": "Item",
+                  "type": "nominal",
+                  "title": "Item"
+                },
+                "opacity": {
+                  "condition": {
+                    "param": "regionClick",
+                    "empty": true,
+                    "value": 1
+                  },
+                  "value": 0.2
+                },
+                "tooltip": [
+                  { "field": "Region" },
+                  { "field": "Item" },
+                  { "aggregate": "sum", "field": "Revenue" }
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "resolve": { "scale": { "color": "independent", "size": "independent" } }
+    };
+
+    vegaEmbed('#vis', spec, { actions: false }).catch(console.error);
+  </script>
+</body>
+
+</html>
